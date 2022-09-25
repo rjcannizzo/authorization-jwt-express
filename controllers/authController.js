@@ -73,6 +73,8 @@ exports.signupPost = async (req, res) => {
 }
 
 exports.logout = (req, res) => {
-    res.send({message: 'OK'})
+    // replace the user's jwt cookie with empty token and maxAge set to 1 millisecond
+    res.cookie('jwt', '', {maxAge: 1})
+    res.redirect('/login')
 }
 
