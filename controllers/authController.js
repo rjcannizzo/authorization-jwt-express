@@ -1,5 +1,7 @@
 'use strict'
 const User = require('../models/User')
+const jwt = require('jsonwebtoken')
+const maxAge = 60 * 60 * 24 // JWT expiration in seconds
 
 /**
  * Returns an object with email and password error messages
@@ -16,7 +18,24 @@ function handleErrors(err) {
     if(err.code === 11000) {
         errors.email = 'That email is already registered'
     }
+
+    if(err.message === 'Incorrect email') {
+        errors.email = 'That email is not registered'
+    }
+    if(err.message === 'Incorrect password') {
+        errors.password = 'Password is incorrect'
+    }
+
     return errors
+}
+
+/**
+ * Returns a JSON Web token
+ * @param {number} userID 
+ * @returns json web token
+ */
+const createToken = (userID) => {
+    return jwt.sign({id: userID}, process.env.JWT_SECRET, {expiresIn: maxAge})
 }
 
 exports.loginGet = (req, res) => {
@@ -25,19 +44,28 @@ exports.loginGet = (req, res) => {
 
 exports.loginPost = async (req, res) => {
     const { email, password } = req.body
-    
-    res.send({message: 'OK'})
+    try {
+        const user = await User.login(email, password)
+        const token = createToken(user.id)        
+        res.cookie('jwt', token, {httpOnly: true, expiresIn: maxAge * 1000}) // expiresIn requires milliseconds
+        res.json({user: user.id})    
+    } catch (error) {
+        const errors = handleErrors(error)
+        res.status(400).json({errors})
+    }    
 }
 
 exports.signupGet = (req, res) => {
     res.render('signup')
 }
 
-exports.signupPost = async (req, res) => {
-    const { email, password } = req.body
+exports.signupPost = async (req, res) => {       
     try {
+        const { email, password } = req.body 
         const user = await User.create({email, password})
-        res.status(201).json(user)
+        const token = createToken(user.id)        
+        res.cookie('jwt', token, {httpOnly: true, expiresIn: maxAge * 1000}) // expiresIn requires milliseconds
+        res.status(201).json({user: user.id})
     } catch (error) {
         const errors = handleErrors(error)
         res.status(400).json({errors})

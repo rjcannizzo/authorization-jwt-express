@@ -24,6 +24,29 @@ userSchema.pre('save', async function(next) {
     next()
 })
 
+/**
+ * Checks user email and password for login route.
+ * @param {string} email 
+ * @param {string} password 
+ * @returns User object
+ */
+userSchema.statics.login = async function(email, password) {
+    try {
+        const user = await this.findOne({email})
+        if(!user) {
+            throw Error('Incorrect email')
+        }
+        const passwordIsValid = await bcrypt.compare(password, user.password)
+        if(passwordIsValid) {
+            return user
+        }
+        throw Error('Incorrect password')
+
+    } catch (error) {
+        throw error
+    }   
+}
+
 const User = mongoose.model('user', userSchema)
 
 module.exports = User
